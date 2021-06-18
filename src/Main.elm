@@ -1,8 +1,8 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, form, input, table, tbody, td, text, th, thead, tr)
-import Html.Attributes as Attributes
+import Html exposing (..)
+import Html.Attributes as Att
 import Html.Events exposing (onInput, onSubmit)
 import Http
 import ISO8601
@@ -76,10 +76,11 @@ subscriptions mode =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ form [ onSubmit ZipCodeSubmit ]
-            [ input [ Attributes.type_ "text", Attributes.value model.zipCode, onInput ZipCodeEntry ] []
-            , button [ Attributes.type_ "submit" ] [ text "Submit" ]
+    div [ Att.class "container" ]
+        [ Html.form [ onSubmit ZipCodeSubmit, Att.class "location-form" ]
+            [ label [ Att.for "zip-code-input" ] [ text "Zip Code:" ]
+            , input [ Att.id "zip-code-input", Att.type_ "text", Att.value model.zipCode, onInput ZipCodeEntry ] []
+            , button [ Att.type_ "submit" ] [ text "Submit" ]
             ]
         , forcastDisplay model.forcast
         ]
@@ -102,11 +103,11 @@ forcastDisplay forcastState =
 
 
 uvGrid forcast =
-    table []
+    table [ Att.class "uvTable" ]
         [ thead []
             [ tr []
-                [ th [] [ text "Time" ]
-                , th [] [ text "UV" ]
+                [ th [ Att.class "uvHour" ] [ text "Time" ]
+                , th [ Att.class "uvHour" ] [ text "UV" ]
                 ]
             ]
         , tbody []
@@ -117,8 +118,8 @@ uvGrid forcast =
 uvRow : HourForcast -> Html Msg
 uvRow data =
     tr []
-        [ td [] [ text (formatHour data.hour) ]
-        , td [] [ text (String.fromInt data.uv) ]
+        [ td [ Att.class "uvHour uvCell" ] [ text (formatHour data.hour) ]
+        , td [ Att.class "uvHourValue uvCell" ] [ text (String.fromInt data.uv) ]
         ]
 
 
