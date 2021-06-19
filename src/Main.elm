@@ -1,16 +1,36 @@
 module Main exposing (..)
 
 import Browser
+import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes as Att
 import Html.Events exposing (onInput, onSubmit)
 import Http
 import ISO8601
 import Json.Decode exposing (Decoder, field, int, list, map2, string)
+import Url
+import Url.Builder
+import Url.Parser exposing ((</>))
 
 
 main =
-    Browser.element { init = init, update = update, subscriptions = subscriptions, view = view }
+    Browser.application
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        , onUrlChange = UrlChanged
+        , onUrlRequest = Navigate
+        }
+
+
+type Route
+    = ZipCode String
+
+
+routeParser : Url.Parser.Parser (Route -> a) a
+routeParser =
+    Url.Parser.map ZipCode (Url.Parser.s "zipcode" </> Url.Parser.string)
 
 
 type Forcast
@@ -22,7 +42,9 @@ type Forcast
 
 type alias Model =
     { zipCode : String
+    , zipCodeInput : String
     , forcast : Forcast
+    , navKey : Nav.Key
     }
 
 
@@ -40,15 +62,37 @@ type alias Hour =
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { zipCode = "", forcast = Idle }, Cmd.none )
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url key =
+    let
+        ( zip, cmd ) =
+            case Url.Parser.parse routeParser url of
+                Just (ZipCode zipParam) ->
+                    ( zipParam, getForcast zipParam )
+
+                Nothing ->
+                    ( "", Cmd.none )
+    in
+    ( { zipCode = zip
+      , zipCodeInput = zip
+      , forcast =
+            if zip /= "" then
+                Loading
+
+            else
+                Idle
+      , navKey = key
+      }
+    , cmd
+    )
 
 
 type Msg
     = GotForcast (Result Http.Error ForcastData)
     | ZipCodeEntry String
     | ZipCodeSubmit
+    | UrlChanged Url.Url
+    | Navigate Browser.UrlRequest
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -62,11 +106,29 @@ update msg model =
                 Err _ ->
                     ( { model | forcast = Failure }, Cmd.none )
 
-        ZipCodeEntry zipCode ->
-            ( { model | zipCode = zipCode }, Cmd.none )
+        ZipCodeEntry input ->
+            ( { model | zipCodeInput = input }, Cmd.none )
 
         ZipCodeSubmit ->
-            ( { model | forcast = Loading }, getForcast model.zipCode )
+            ( { model | forcast = Loading }
+            , switchZipCode model.navKey model.zipCodeInput
+            )
+
+        UrlChanged url ->
+            case Url.Parser.parse routeParser url of
+                Just (ZipCode zip) ->
+                    ( { model | zipCode = zip }, getForcast zip )
+
+                Nothing ->
+                    ( { model | zipCode = "" }, Cmd.none )
+
+        Navigate urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.navKey (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
 
 
 subscriptions : Model -> Sub Msg
@@ -74,16 +136,26 @@ subscriptions mode =
     Sub.none
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div [ Att.class "container" ]
-        [ Html.form [ onSubmit ZipCodeSubmit, Att.class "location-form" ]
-            [ label [ Att.for "zip-code-input" ] [ text "Zip Code:" ]
-            , input [ Att.id "zip-code-input", Att.type_ "text", Att.value model.zipCode, onInput ZipCodeEntry ] []
-            , button [ Att.type_ "submit" ] [ text "Submit" ]
+    { title = "UV Index"
+    , body =
+        [ div [ Att.class "container" ]
+            [ Html.form [ onSubmit ZipCodeSubmit, Att.class "location-form" ]
+                [ label [ Att.for "zip-code-input" ] [ text "Zip Code:" ]
+                , input
+                    [ Att.id "zip-code-input"
+                    , Att.type_ "text"
+                    , Att.value model.zipCodeInput
+                    , onInput ZipCodeEntry
+                    ]
+                    []
+                , button [ Att.type_ "submit" ] [ text "Submit" ]
+                ]
+            , forcastDisplay model.forcast
             ]
-        , forcastDisplay model.forcast
         ]
+    }
 
 
 forcastDisplay : Forcast -> Html Msg
@@ -197,6 +269,11 @@ getForcast zipCode =
         { url = "https://uv.samnordlinger.workers.dev/" ++ zipCode
         , expect = Http.expectJson GotForcast forcastDecoder
         }
+
+
+switchZipCode : Nav.Key -> String -> Cmd Msg
+switchZipCode key zip =
+    Nav.pushUrl key ("/zipcode/" ++ zip)
 
 
 forcastDecoder : Decoder ForcastData
