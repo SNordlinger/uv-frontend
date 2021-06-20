@@ -64,27 +64,24 @@ type alias Hour =
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    let
-        ( zip, cmd ) =
-            case Url.Parser.parse routeParser url of
-                Just (ZipCode zipParam) ->
-                    ( zipParam, getForcast zipParam )
+    case Url.Parser.parse routeParser url of
+        Just (ZipCode zip) ->
+            ( { zipCode = zip
+              , zipCodeInput = zip
+              , forcast = Loading
+              , navKey = key
+              }
+            , getForcast zip
+            )
 
-                Nothing ->
-                    ( "", Cmd.none )
-    in
-    ( { zipCode = zip
-      , zipCodeInput = zip
-      , forcast =
-            if zip /= "" then
-                Loading
-
-            else
-                Idle
-      , navKey = key
-      }
-    , cmd
-    )
+        Nothing ->
+            ( { zipCode = ""
+              , zipCodeInput = ""
+              , forcast = Idle
+              , navKey = key
+              }
+            , Cmd.none
+            )
 
 
 type Msg
