@@ -275,7 +275,7 @@ switchZipCode key zip =
 
 forcastDecoder : Decoder ForcastData
 forcastDecoder =
-    field "hourly" (list hourDecoder)
+    list hourDecoder
 
 
 hourDecoder : Decoder HourData
