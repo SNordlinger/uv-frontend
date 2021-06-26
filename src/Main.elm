@@ -263,7 +263,7 @@ type alias ForcastData =
 getForcast : String -> Cmd Msg
 getForcast zipCode =
     Http.get
-        { url = "https://uv.samnordlinger.workers.dev/" ++ zipCode
+        { url = "https://uv-api.fly.dev/zipcode/" ++ zipCode
         , expect = Http.expectJson GotForcast forcastDecoder
         }
 
