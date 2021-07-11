@@ -41,7 +41,8 @@ type Forcast
 
 
 type alias Model =
-    { zipCode : String
+    { apiEndpoint : String
+    , zipCode : String
     , zipCodeInput : String
     , forcast : Forcast
     , navKey : Nav.Key
@@ -62,20 +63,27 @@ type alias Hour =
     }
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
+type alias Flags =
+    { endpoint : String
+    }
+
+
+init : Flags -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     case Url.Parser.parse routeParser url of
         Just (ZipCode zip) ->
-            ( { zipCode = zip
+            ( { apiEndpoint = flags.endpoint
+              , zipCode = zip
               , zipCodeInput = zip
               , forcast = Loading
               , navKey = key
               }
-            , getForcast zip
+            , getForcast flags.endpoint zip
             )
 
         Nothing ->
-            ( { zipCode = ""
+            ( { apiEndpoint = flags.endpoint
+              , zipCode = ""
               , zipCodeInput = ""
               , forcast = Idle
               , navKey = key
@@ -114,7 +122,7 @@ update msg model =
         UrlChanged url ->
             case Url.Parser.parse routeParser url of
                 Just (ZipCode zip) ->
-                    ( { model | zipCode = zip }, getForcast zip )
+                    ( { model | zipCode = zip }, getForcast model.apiEndpoint zip )
 
                 Nothing ->
                     ( { model | zipCode = "" }, Cmd.none )
@@ -260,10 +268,10 @@ type alias ForcastData =
     List HourData
 
 
-getForcast : String -> Cmd Msg
-getForcast zipCode =
+getForcast : String -> String -> Cmd Msg
+getForcast endpoint zipCode =
     Http.get
-        { url = "https://uv-api.fly.dev/zipcode/" ++ zipCode
+        { url = endpoint ++ "/zipcode/" ++ zipCode
         , expect = Http.expectJson GotForcast forcastDecoder
         }
 

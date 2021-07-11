@@ -1,6 +1,9 @@
 publish = "build"
 command = "npm run build"
 
+[build.environment]
+ELM_APP_UV_ENDPOINT = "https://uv-api.fly.dev"
+
 [[redirects]]
 from = "/*"
 to = "/"
